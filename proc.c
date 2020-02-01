@@ -286,7 +286,7 @@ wait(int *status)
       havekids = 1;
       if(p->state == ZOMBIE){
         // Found one.
-        if(status){	
+        if(status != 0){	
           *status = p->status;
 	}
         pid = p->pid;
@@ -326,11 +326,13 @@ int waitpid(int pid, int *status, int options)
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->pid != pid)
+	continue;
+      if(p->parent != curproc)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE){
-        if(status){
-          *status = p->status;
+        if(status != 0){
+         *status = p->status;
         }
         pid = p->pid;
         kfree(p->kstack);
@@ -342,8 +344,11 @@ int waitpid(int pid, int *status, int options)
         p->killed = 0;
         p->state = UNUSED;
         release(&ptable.lock);
-        return pid;
-
+        //return pid;
+	//if(status){
+        // *status = p->status;
+        //}
+	return pid;
       }
     }
 
