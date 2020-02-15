@@ -430,7 +430,7 @@ int setpriority(int priority) {
    curproc->priority = priority;
    release(&ptable.lock);
 
-   return 0; //not sure what to return yet
+   return 0; 
 }
 
 // Enter scheduler.  Must hold only ptable.lock
