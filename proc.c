@@ -86,6 +86,7 @@ allocproc(void)
   return 0;
 
 found:
+  p->priority = 10; //added for lab 2 for priority scheduling, need to set a default value
   p->state = EMBRYO;
   p->pid = nextpid++;
 
@@ -331,9 +332,9 @@ int waitpid(int pid, int *status, int options)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE){
-        if(status != 0){
+       // if(status != 0){
          *status = p->status;
-        }
+       // }
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -373,27 +374,44 @@ int waitpid(int pid, int *status, int options)
 void
 scheduler(void)
 {
-  struct proc *p;
+  struct proc *p; //used for iteration through process table
+  struct proc *p_iter; //used for iteration through process table
   struct cpu *c = mycpu();
   c->proc = 0;
   
   for(;;){
     // Enable interrupts on this processor.
     sti();
-
+    struct proc *currHighestPriority = 0;
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
+      currHighestPriority = p;
 
+      //need to iterate through entire ptable again because we have to compare the current process's priority with the rest of ptable
+      for(p_iter = ptable.proc; p_iter < &ptable.proc[NPROC]; p_iter++) {
+	if(p_iter->state != RUNNABLE) {
+	  p_iter->priority++; //increment it here, because the p_iter process is not running, it is WAITING
+	  continue;
+	}
+
+	if(p_iter->priority < currHighestPriority->priority){
+	 //we iterated through the process table and we found a process with a higher priority and we want to schedule that first
+	 currHighestPriority = p_iter;
+	}
+       }
+	
+      p = currHighestPriority; //setting the process that runs to the process with the highest priority	
+     
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-
+      p->priority--; //decrement the priority here because the process set to RUN now, for aging
       swtch(&(c->scheduler), p->context);
       switchkvm();
 
@@ -404,6 +422,15 @@ scheduler(void)
     release(&ptable.lock);
 
   }
+}
+
+int setpriority(int priority) {
+   struct proc *curproc = myproc();
+   acquire(&ptable.lock);
+   curproc->priority = priority;
+   release(&ptable.lock);
+
+   return 0; //not sure what to return yet
 }
 
 // Enter scheduler.  Must hold only ptable.lock
