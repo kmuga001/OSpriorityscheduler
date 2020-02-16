@@ -377,8 +377,7 @@ scheduler(void)
   struct proc *p; //used for iteration through process table
   struct proc *p_iter; //used for iteration through process table
   struct cpu *c = mycpu();
-  c->proc = 0;
-  
+  c->proc = 0; 
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -387,13 +386,14 @@ scheduler(void)
     acquire(&ptable.lock);
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
-        continue;
+	continue;
       currHighestPriority = p;
-
+     
       //need to iterate through entire ptable again because we have to compare the current process's priority with the rest of ptable
       for(p_iter = ptable.proc; p_iter < &ptable.proc[NPROC]; p_iter++) {
 	if(p_iter->state != RUNNABLE) {
-	  p_iter->priority++; //increment it here, because the p_iter process is not running, it is WAITING
+	  p_iter->priority--; //increment priority by decreasing the integer value  here, because the p_iter process is not running, it is WAITING
+	 
 	  continue;
 	}
 
@@ -404,17 +404,15 @@ scheduler(void)
        }
 	
       p = currHighestPriority; //setting the process that runs to the process with the highest priority	
-     
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
-      p->priority--; //decrement the priority here because the process set to RUN now, for aging
+      p->priority++; //decrement the priority here because the process set to RUN now and the process got its turn
       swtch(&(c->scheduler), p->context);
       switchkvm();
-
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
